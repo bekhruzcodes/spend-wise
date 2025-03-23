@@ -22,14 +22,17 @@ jobs:
             set -x  # Enable command tracing for debugging
             ./deploy.sh 2>&1 | tee deploy.log  # Capture logs
 
-      - name: Check Deployment Logs
-        if: failure()
+      - name: Fetch Deployment Logs
+        id: fetch_logs
+        if: always()
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ubuntu
           key: ${{ secrets.AWS_PRIVATE_KEY }}
-          script: cat /var/www/html/spend-wise/deploy.log || echo "No logs available"
+          script: cat /var/www/html/spend-wise/deploy.log | tail -n 10 || echo "No logs available"
+        env:
+          DEPLOY_LOGS: ${{ steps.fetch_logs.outputs.stdout }}
 
       - name: Send Telegram notification
         if: always()
@@ -47,4 +50,6 @@ jobs:
             Time: ${{ github.event.repository.updated_at }}
 
             Logs:
-            $(cat /var/www/html/spend-wise/deploy.log | tail -n 10 || echo "No logs available")
+            ```
+            ${{ steps.fetch_logs.outputs.stdout }}
+            ```
