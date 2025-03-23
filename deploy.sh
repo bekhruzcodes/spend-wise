@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /var/www/html/api
+cd /var/www/html/spend-wise
 
 # Pull latest changes (but keep .env intact)
 git pull origin main
