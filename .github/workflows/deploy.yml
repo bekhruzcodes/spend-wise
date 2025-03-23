@@ -1,21 +1,35 @@
 name: Deploy API to AWS
-
 on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Connect to AWS & Run deploy.sh
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.AWS_HOST }}
-        username: ubuntu
-        key: ${{ secrets.AWS_PRIVATE_KEY }}
-        script: |
-          cd /var/www/html/api
-          ./deploy.sh
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          script: |
+            cd /var/www/html/api
+            ./deploy.sh
+      
+      - name: Send Telegram notification
+        if: always()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            Deployment Status: ${{ job.status == 'success' && '✅ Success!' || '❌ Failed!' }}
+            
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.event.after }}
+            User: ${{ github.actor }}
+            Time: ${{ github.event.repository.updated_at }}
