@@ -47,4 +47,4 @@ jobs:
             Time: ${{ github.event.repository.updated_at }}
 
             Logs:
-            $(cat /var/www/html/api/deploy.log | tail -n 10 || echo "No logs available")
+            $(cat /var/www/html/spend-wise/deploy.log | tail -n 10 || echo "No logs available")
