@@ -55,4 +55,32 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
         $this->save($user, true);
     }
+
+    /**
+     * Check if a user with the given email or username exists
+     * 
+     * @param string $email
+     * @param string $username
+     * @return array Returns details about which fields already exist
+     */
+    public function checkExistingUser(string $email, string $username): array
+    {
+        $qb = $this->createQueryBuilder('u')
+            ->select('
+                CASE WHEN u.email = :email THEN true ELSE false END as emailExists,
+                CASE WHEN u.username = :username THEN true ELSE false END as usernameExists
+            ')
+            ->where('u.email = :email OR u.username = :username')
+            ->setParameter('email', $email)
+            ->setParameter('username', $username)
+            ->setMaxResults(1);
+            
+        $result = $qb->getQuery()->getOneOrNullResult();
+        
+        if (!$result) {
+            return ['emailExists' => false, 'usernameExists' => false];
+        }
+        
+        return $result;
+    }
 }

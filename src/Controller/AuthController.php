@@ -27,10 +27,19 @@ class AuthController extends AbstractController
         if (!isset($data['email']) || !isset($data['password']) || !isset($data['username'])) {
             return $this->json(['message' => 'Missing required fields'], Response::HTTP_BAD_REQUEST);
         }
-
-        $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
-        if ($existingUser) {
-            return $this->json(['message' => 'User already exists'], Response::HTTP_CONFLICT);
+        
+        // Check both email and username uniqueness in a single query
+        $existingCheck = $entityManager->getRepository(User::class)->checkExistingUser(
+            $data['email'], 
+            $data['username']
+        );
+        
+        if ($existingCheck['emailExists']) {
+            return $this->json(['message' => 'Email already in use'], Response::HTTP_CONFLICT);
+        }
+        
+        if ($existingCheck['usernameExists']) {
+            return $this->json(['message' => 'Username already taken'], Response::HTTP_CONFLICT);
         }
 
         $user = new User();
