@@ -1,0 +1,21 @@
+name: Deploy API to AWS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Connect to AWS & Run deploy.sh
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.AWS_HOST }}
+        username: ubuntu
+        key: ${{ secrets.AWS_PRIVATE_KEY }}
+        script: |
+          cd /var/www/html/api
+          ./deploy.sh
