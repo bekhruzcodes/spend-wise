@@ -10,15 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2
+        id: deploy
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ubuntu
           key: ${{ secrets.AWS_PRIVATE_KEY }}
           script: |
-            cd /var/www/html/api
-            ./deploy.sh
-      
+            cd /var/www/html/spend-wise
+            chmod +x deploy.sh  # Ensure the script is executable
+            set -x  # Enable command tracing for debugging
+            ./deploy.sh 2>&1 | tee deploy.log  # Capture logs
+
+      - name: Check Deployment Logs
+        if: failure()
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          script: cat /var/www/html/spend-wise/deploy.log || echo "No logs available"
+
       - name: Send Telegram notification
         if: always()
         uses: appleboy/telegram-action@master
@@ -27,9 +39,12 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
             Deployment Status: ${{ job.status == 'success' && '✅ Success!' || '❌ Failed!' }}
-            
+
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.event.after }}
             User: ${{ github.actor }}
             Time: ${{ github.event.repository.updated_at }}
+
+            Logs:
+            $(cat /var/www/html/api/deploy.log | tail -n 10 || echo "No logs available")
