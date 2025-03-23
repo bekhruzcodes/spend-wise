@@ -85,11 +85,28 @@ class AuthController extends AbstractController
     #[Route('/debug', name: 'api_debug')]
     public function debug(Request $request): JsonResponse
     {
+        $authHeader = $request->headers->get('Authorization');
+        $tokenParts = $authHeader ? explode(' ', $authHeader) : [];
+        
         return $this->json([
-            'auth_header' => $request->headers->get('Authorization'),
-            'user' => $this->getUser() ? 'authenticated' : 'not authenticated',
-            'token_parts' => $request->headers->get('Authorization') ? 
-                explode(' ', $request->headers->get('Authorization')) : [],
+            'request' => [
+                'method' => $request->getMethod(),
+                'ip' => $request->getClientIp(),
+                'user_agent' => $request->headers->get('User-Agent'),
+                'query_params' => $request->query->all(),
+                'body' => json_decode($request->getContent(), true),
+            ],
+            'authentication' => [
+                'auth_header' => $authHeader,
+                'user' => $this->getUser() ? $this->getUser()->getUserIdentifier() : 'not authenticated',
+                'roles' => $this->getUser() ? $this->getUser()->getRoles() : [],
+                'token_parts' => $tokenParts,
+            ],
+            'server' => [
+                'symfony_env' => $_ENV['APP_ENV'] ?? 'unknown',
+                'php_version' => phpversion(),
+            ]
         ]);
     }
+
 }
