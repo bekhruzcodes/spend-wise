@@ -29,11 +29,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.AWS_PRIVATE_KEY }}
           script: |
-            tail -n 10 /var/www/html/spend-wise/deploy.log || echo "No logs available"
-          script_stop: false
-          debug: true
-          envs: GITHUB_SERVER
-        
+            tail -n 10 /var/www/html/spend-wise/deploy.log > /tmp/recent_logs.txt
+            cat /tmp/recent_logs.txt
+      
       - name: Check Deployment Logs
         if: failure()
         uses: appleboy/ssh-action@master
@@ -45,12 +43,18 @@ jobs:
       
       - name: Send Telegram notification
         if: always()
-        uses: appleboy/telegram-action@master
+        uses: appleboy/ssh-action@master
         with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: |
-            Deployment Status: ${{ job.status == 'success' && '✅ Success!' || '❌ Failed!' }}
+          host: ${{ secrets.AWS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          script: |
+            DEPLOY_LOGS=$(cat /tmp/recent_logs.txt || echo "No logs available")
+            
+            curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage \
+              -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+              -d parse_mode=Markdown \
+              -d text="Deployment Status: ${{ job.status == 'success' && '✅ Success!' || '❌ Failed!' }}
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.event.after }}
@@ -58,6 +62,6 @@ jobs:
             Time: ${{ github.event.repository.updated_at }}
             
             Logs:
-            ```
-            ${{ steps.fetch_logs.outputs.stdout || 'No logs available' }}
-            ```
+            \`\`\`
+            $DEPLOY_LOGS
+            \`\`\`"
